@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>UCS Launcher</title>
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#14181B">
+<style>
+:root{
+  --bg:#14181B; --panel:#1D2226; --panel-raised:#242A2E;
+  --line:#323A40; --text:#EDEFF0; --text-dim:#8B959C;
+  --amber:#E8A33D; --amber-dim:#4A3A20;
+  --green:#5FAE72; --red:#C2564A;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, Menlo, monospace;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; height:100%; background:#000; color:var(--text); font-family:var(--font); overscroll-behavior-y:none;}
+.app-bg{position:fixed; inset:0; z-index:-1;
+  background:url('assets/cover.jpg') center top / cover no-repeat, var(--bg);}
+.app-bg::after{content:""; position:absolute; inset:0; background:rgba(20,24,27,0.87);}
+body{padding-bottom:env(safe-area-inset-bottom);}
+h1,h2,h3{margin:0; font-weight:600;}
+button{font-family:inherit; -webkit-appearance:none; border:none; cursor:pointer;}
+input{font-family:inherit;}
+
+#app{max-width:520px; margin:0 auto; min-height:100%; display:flex; flex-direction:column;}
+
+/* Top bar */
+.topbar{position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:10px;
+  padding:calc(env(safe-area-inset-top) + 14px) 16px 14px; background:rgba(20,24,27,.9);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--line);}
+.topbar .back{width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  background:var(--panel); border-radius:8px; color:var(--text-dim); font-size:18px; flex:none;}
+.topbar h1{font-size:17px; letter-spacing:.2px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.topbar .sub{font-size:12px; color:var(--text-dim); font-family:var(--mono);}
+
+.screen{flex:1; padding:16px; padding-bottom:32px;}
+.hidden{display:none !important;}
+
+/* Job list */
+.job-card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+  margin-bottom:10px; display:flex; align-items:center; gap:12px;}
+.job-card .info{flex:1; min-width:0;}
+.job-card .name{font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.job-card .meta{font-size:12px; color:var(--text-dim); font-family:var(--mono); margin-top:2px;}
+.status-dots{display:flex; gap:5px; flex:none;}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--line);}
+.dot.done{background:var(--green);}
+.empty-state{text-align:center; padding:60px 20px; color:var(--text-dim);}
+.empty-state p{margin:8px 0 0; font-size:14px; line-height:1.5;}
+
+.fab{position:fixed; left:20px; bottom:calc(env(safe-area-inset-bottom) + 20px); z-index:6;
+  width:72px; height:72px; border-radius:20px; background:var(--amber); color:#1A1400;
+  font-size:38px; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);}
+
+/* Forms */
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; letter-spacing:.2px;}
+.field input{width:100%; background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:12px 14px; color:var(--text); font-size:16px;}
+.field input:focus{outline:none; border-color:var(--amber);}
+.primary-btn{width:100%; background:var(--amber); color:#1A1400; font-size:16px; font-weight:600;
+  padding:14px; border-radius:12px; margin-top:6px;}
+.primary-btn:active{opacity:.85;}
+.secondary-btn{width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text);
+  font-size:15px; font-weight:600; padding:13px; border-radius:12px;}
+
+/* Job detail */
+.stage-toggle{display:flex; background:var(--panel); border-radius:12px; padding:4px; margin-bottom:18px;}
+.stage-toggle button{flex:1; padding:10px; border-radius:9px; font-size:14px; font-weight:600; color:var(--text-dim); background:transparent;}
+.stage-toggle button.active{background:var(--panel-raised); color:var(--text);}
+
+.section-title{font-size:12px; text-transform:none; color:var(--text-dim); letter-spacing:.3px; margin:22px 0 10px;}
+.section-title:first-child{margin-top:0;}
+
+.photo-strip{position:sticky; top:66px; z-index:4; display:flex; gap:8px; margin-bottom:14px;
+  background:var(--bg); padding-bottom:4px;}
+.photo-strip.static{position:static; box-shadow:none;}
+.photo-slot{flex:1; aspect-ratio:1; background:var(--panel); border:1px dashed var(--line); border-radius:10px;
+  display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
+  box-shadow:0 6px 14px rgba(0,0,0,.3);}
+.photo-slot img{width:100%; height:100%; object-fit:cover;}
+.photo-slot .plus{font-size:22px; color:var(--text-dim);}
+.photo-slot .slot-label{position:absolute; bottom:2px; left:0; right:0; text-align:center; font-size:9px;
+  color:var(--text-dim); background:rgba(0,0,0,.4); padding:2px 0;}
+.photo-slot .retake{position:absolute; top:3px; right:3px; width:22px; height:22px; border-radius:50%;
+  background:rgba(0,0,0,.55); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center;}
+
+.readings-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.readings-grid .field{margin-bottom:0;}
+.readings-grid input{font-family:var(--mono); font-size:17px; text-align:left;}
+
+.bottom-actions{display:flex; gap:10px; margin-top:26px;}
+
+#file-input{display:none;}
+
+.viewer-overlay{position:fixed; inset:0; background:#000; z-index:20; display:flex; flex-direction:column;}
+.viewer-overlay img{flex:1; width:100%; object-fit:contain;}
+.viewer-close{position:absolute; top:calc(env(safe-area-inset-top) + 14px); right:16px; z-index:21;
+  width:34px; height:34px; background:rgba(255,255,255,.15); border-radius:50%; color:#fff; font-size:18px;
+  display:flex; align-items:center; justify-content:center;}
+
+.toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 24px); transform:translateX(-50%);
+  background:var(--panel-raised); border:1px solid var(--line); color:var(--text); padding:10px 18px;
+  border-radius:20px; font-size:13px; z-index:30; opacity:0; transition:opacity .25s; pointer-events:none;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="app-bg"></div>
+<div id="app">
+
+  <!-- JOB LIST SCREEN -->
+  <div id="screen-list" class="screen-wrap">
+    <div class="topbar">
+      <h1>Jobs</h1>
+    </div>
+    <div class="screen">
+      <div id="job-list"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <div style="font-size:32px;">📋</div>
+        <p>No jobs yet.<br>Tap + to start one.</p>
+      </div>
+    </div>
+    <button class="fab" onclick="showNewJob()">+</button>
+  </div>
+
+  <!-- NEW JOB SCREEN -->
+  <div id="screen-new" class="screen-wrap hidden">
+    <div class="topbar">
+      <button class="back" onclick="showList()">‹</button>
+      <h1>New Job</h1>
+    </div>
+    <div class="screen">
+      <div class="field"><label>Customer</label><input id="new-customer" type="text" placeholder="Name"></div>
+      <button class="primary-btn" onclick="createJob()">Start Job</button>
+    </div>
+  </div>
+
+  <!-- JOB DETAIL SCREEN -->
+  <div id="screen-job" class="screen-wrap hidden">
+    <div class="topbar">
+      <button class="back" onclick="showList()">‹</button>
+      <div style="flex:1; min-width:0;">
+        <h1 id="job-title" style="font-size:16px;"></h1>
+        <div class="sub" id="job-sub"></div>
+      </div>
+    </div>
+    <div class="screen">
+      <div class="stage-toggle">
+        <button id="tab-before" onclick="setStage('before')">Before</button>
+        <button id="tab-after" onclick="setStage('after')">After</button>
+      </div>
+
+      <div class="section-title">Vehicle Details</div>
+      <div class="field"><label>License Plate</label><input id="detail-licensePlate" type="text" autocapitalize="characters"></div>
+      <div class="field"><label>Mileage</label><input id="detail-mileage" type="text" inputmode="numeric"></div>
+      <div class="field"><label>Make</label><input id="detail-make" type="text"></div>
+      <div class="field"><label>Model</label><input id="detail-model" type="text"></div>
+      <div class="field"><label>Engine Type</label><input id="detail-engine" type="text" placeholder="e.g. 1.7L I4"></div>
+      <div class="field"><label>VIN</label><input id="detail-vin" type="text" autocapitalize="characters"></div>
+      <button class="secondary-btn" onclick="saveDetails()">Save Details</button>
+
+      <div class="section-title">Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
+      <div class="photo-strip" id="photo-strip"></div>
+
+      <div class="section-title">Readings (from photo)</div>
+      <div class="readings-grid">
+        <div class="field"><label>CO PPM</label><input data-field="co" type="text" inputmode="decimal"></div>
+        <div class="field"><label>CO2 %</label><input data-field="co2" type="text" inputmode="decimal"></div>
+        <div class="field"><label>O2 %</label><input data-field="o2" type="text" inputmode="decimal"></div>
+      </div>
+
+      <div class="bottom-actions">
+        <button class="secondary-btn" onclick="saveReadings()">Save Readings</button>
+      </div>
+
+      <div class="section-title">Vehicle ID Photos (VIN, Plate, Side View)</div>
+      <div class="photo-strip static" id="vehicle-photo-strip"></div>
+
+      <div class="bottom-actions">
+        <button class="primary-btn" onclick="generateReport()">Generate Report</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<input type="file" id="file-input" accept="image/*" capture="environment">
+
+<div id="viewer" class="viewer-overlay hidden">
+  <button class="viewer-close" onclick="closeViewer()">✕</button>
+  <img id="viewer-img">
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = "/api";
+let jobs = [];
+let currentJob = null;
+let currentStage = "before";
+let pendingCapture = null; // { kind: "analyzer"|"vehicle", slot }
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+function show(id){
+  document.querySelectorAll(".screen-wrap").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+function showList(){ show("screen-list"); loadJobs(); }
+function showNewJob(){
+  document.getElementById("new-customer").value = "";
+  show("screen-new");
+}
+
+async function loadJobs(){
+  try{
+    const res = await fetch(`${API}/jobs`);
+    jobs = await res.json();
+  }catch(e){ jobs = []; }
+  renderJobList();
+}
+
+function renderJobList(){
+  const list = document.getElementById("job-list");
+  const empty = document.getElementById("empty-state");
+  if(!jobs.length){ list.innerHTML=""; empty.classList.remove("hidden"); return; }
+  empty.classList.add("hidden");
+  list.innerHTML = jobs.map(j=>`
+    <div class="job-card" onclick="openJob('${j.id}')">
+      <div class="info">
+        <div class="name">${escapeHtml(j.customer || j.licensePlate || "Untitled")}</div>
+        <div class="meta">${escapeHtml(j.licensePlate||"")} ${j.vin ? "· "+escapeHtml(j.vin) : ""}</div>
+      </div>
+      <div class="status-dots">
+        <div class="dot ${hasAnyPhoto(j.before) ? 'done':''}" title="Before"></div>
+        <div class="dot ${hasAnyPhoto(j.after) ? 'done':''}" title="After"></div>
+      </div>
+    </div>
+  `).join("");
+}
+function hasAnyPhoto(stage){
+  return !!(stage && Array.isArray(stage.photoKeys) && stage.photoKeys.some(Boolean));
+}
+
+function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+async function createJob(){
+  const customer = document.getElementById("new-customer").value.trim();
+  if(!customer){ toast("Enter a customer name"); return; }
+  const res = await fetch(`${API}/jobs`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({customer})
+  });
+  const job = await res.json();
+  jobs.unshift(job);
+  openJob(job.id);
+}
+
+async function openJob(id){
+  const res = await fetch(`${API}/jobs?id=${id}`);
+  currentJob = await res.json();
+  document.getElementById("job-title").textContent = currentJob.customer || currentJob.licensePlate || "Job";
+  document.getElementById("job-sub").textContent = [currentJob.licensePlate, currentJob.vin].filter(Boolean).join(" · ");
+  document.getElementById("detail-licensePlate").value = currentJob.licensePlate || "";
+  document.getElementById("detail-mileage").value = currentJob.mileage || "";
+  document.getElementById("detail-make").value = currentJob.make || "";
+  document.getElementById("detail-model").value = currentJob.model || "";
+  document.getElementById("detail-engine").value = currentJob.engine || "";
+  document.getElementById("detail-vin").value = currentJob.vin || "";
+  setStage("before");
+  renderVehiclePhotos();
+  show("screen-job");
+}
+
+async function saveDetails(){
+  const updates = {
+    licensePlate: document.getElementById("detail-licensePlate").value.trim(),
+    mileage: document.getElementById("detail-mileage").value.trim(),
+    make: document.getElementById("detail-make").value.trim(),
+    model: document.getElementById("detail-model").value.trim(),
+    engine: document.getElementById("detail-engine").value.trim(),
+    vin: document.getElementById("detail-vin").value.trim(),
+  };
+  Object.assign(currentJob, updates);
+  document.getElementById("job-title").textContent = currentJob.customer || currentJob.licensePlate || "Job";
+  document.getElementById("job-sub").textContent = [currentJob.licensePlate, currentJob.vin].filter(Boolean).join(" · ");
+  await fetch(`${API}/jobs?id=${currentJob.id}`, {
+    method:"PUT", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(updates)
+  });
+  toast("Details saved");
+}
+
+function setStage(stage){
+  currentStage = stage;
+  document.getElementById("tab-before").classList.toggle("active", stage==="before");
+  document.getElementById("tab-after").classList.toggle("active", stage==="after");
+  renderStage();
+}
+
+function renderStage(){
+  const data = currentJob[currentStage] || {};
+  document.querySelectorAll("[data-field]").forEach(inp=>{
+    inp.value = data[inp.dataset.field] || "";
+  });
+  if(!Array.isArray(data.photoKeys)) data.photoKeys = [null, null, null];
+
+  const strip = document.getElementById("photo-strip");
+  strip.innerHTML = "";
+  data.photoKeys.forEach((key, idx)=>{
+    strip.appendChild(buildSlot(key, {kind:"analyzer", slot:idx}, null));
+  });
+}
+
+function renderVehiclePhotos(){
+  if(!currentJob.vehiclePhotos) currentJob.vehiclePhotos = {vin:null, plate:null, side:null};
+  const strip = document.getElementById("vehicle-photo-strip");
+  strip.innerHTML = "";
+  [["vin","VIN"],["plate","Plate"],["side","Side"]].forEach(([slotKey,label])=>{
+    strip.appendChild(buildSlot(currentJob.vehiclePhotos[slotKey], {kind:"vehicle", slot:slotKey}, label));
+  });
+}
+
+function buildSlot(key, captureTarget, label){
+  const slot = document.createElement("div");
+  slot.className = "photo-slot";
+  if(key){
+    const img = document.createElement("img");
+    img.src = `${API}/photo?key=${encodeURIComponent(key)}`;
+    slot.appendChild(img);
+    const retake = document.createElement("div");
+    retake.className = "retake";
+    retake.textContent = "↻";
+    retake.onclick = (e)=>{ e.stopPropagation(); triggerCapture(captureTarget); };
+    slot.appendChild(retake);
+    slot.onclick = ()=> viewPhoto(key);
+  } else {
+    const plus = document.createElement("div");
+    plus.className = "plus";
+    plus.textContent = "+";
+    slot.appendChild(plus);
+    slot.onclick = ()=> triggerCapture(captureTarget);
+  }
+  if(label){
+    const lbl = document.createElement("div");
+    lbl.className = "slot-label";
+    lbl.textContent = label;
+    slot.appendChild(lbl);
+  }
+  return slot;
+}
+
+function triggerCapture(target){
+  pendingCapture = target;
+  document.getElementById("file-input").click();
+}
+
+document.getElementById("file-input").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  if(!file || !pendingCapture) return;
+  const { kind, slot } = pendingCapture;
+  toast("Uploading...");
+  const base64 = await resizeImage(file);
+
+  if(kind === "analyzer"){
+    const res = await fetch(`${API}/photo?jobId=${currentJob.id}&stage=${currentStage}&slot=${slot}`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({image: base64})
+    });
+    const result = await res.json();
+    if(!Array.isArray(currentJob[currentStage].photoKeys)) currentJob[currentStage].photoKeys = [null, null, null];
+    currentJob[currentStage].photoKeys[slot] = result.photoKey;
+    renderStage();
+  } else {
+    const res = await fetch(`${API}/photo?jobId=${currentJob.id}&stage=vehicle&slot=${slot}`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({image: base64})
+    });
+    const result = await res.json();
+    if(!currentJob.vehiclePhotos) currentJob.vehiclePhotos = {vin:null, plate:null, side:null};
+    currentJob.vehiclePhotos[slot] = result.photoKey;
+    renderVehiclePhotos();
+  }
+
+  toast("Photo saved");
+  e.target.value = "";
+  pendingCapture = null;
+});
+
+function resizeImage(file, maxDim=1400, quality=0.72){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let {width, height} = img;
+        if(width > height){ if(width > maxDim){ height = Math.round(height * maxDim/width); width = maxDim; } }
+        else { if(height > maxDim){ width = Math.round(width * maxDim/height); height = maxDim; } }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function viewPhoto(key){
+  document.getElementById("viewer-img").src = `${API}/photo?key=${encodeURIComponent(key)}`;
+  document.getElementById("viewer").classList.remove("hidden");
+}
+function closeViewer(){
+  document.getElementById("viewer").classList.add("hidden");
+}
+
+async function saveReadings(){
+  const updates = {};
+  document.querySelectorAll("[data-field]").forEach(inp=>{
+    currentJob[currentStage][inp.dataset.field] = inp.value.trim();
+  });
+  updates[currentStage] = currentJob[currentStage];
+  await fetch(`${API}/jobs?id=${currentJob.id}`, {
+    method:"PUT", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(updates)
+  });
+  toast("Readings saved");
+}
+
+function generateReport(){
+  toast("Opening report...");
+  window.open(`${API}/report?jobId=${currentJob.id}`, "_blank");
+}
+
+loadJobs();
+</script>
+</body>
+</html>
