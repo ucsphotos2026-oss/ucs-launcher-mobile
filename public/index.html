@@ -10,18 +10,18 @@
 <meta name="theme-color" content="#14181B">
 <style>
 :root{
-  --bg:#14181B; --panel:#1D2226; --panel-raised:#242A2E;
-  --line:#323A40; --text:#EDEFF0; --text-dim:#8B959C;
-  --amber:#E8A33D; --amber-dim:#4A3A20;
-  --green:#5FAE72; --red:#C2564A;
+  --bg:#EEF4FA; --panel:#FFFFFF; --panel-raised:#F3F7FB;
+  --line:#D7E1EA; --text:#1B2430; --text-dim:#5C6B7A;
+  --amber:#E8A33D; --amber-dim:#F5DDB0;
+  --green:#2E8B4E; --red:#C2564A;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --mono: "SF Mono", ui-monospace, Menlo, monospace;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{margin:0; height:100%; background:#000; color:var(--text); font-family:var(--font); overscroll-behavior-y:none;}
+html,body{margin:0; height:100%; background:#EEF4FA; color:var(--text); font-family:var(--font); overscroll-behavior-y:none;}
 .app-bg{position:fixed; inset:0; z-index:-1;
   background:url('assets/cover.jpg') center top / cover no-repeat, var(--bg);}
-.app-bg::after{content:""; position:absolute; inset:0; background:rgba(20,24,27,0.87);}
+.app-bg::after{content:""; position:absolute; inset:0; background:rgba(255,255,255,0.35);}
 body{padding-bottom:env(safe-area-inset-bottom);}
 h1,h2,h3{margin:0; font-weight:600;}
 button{font-family:inherit; -webkit-appearance:none; border:none; cursor:pointer;}
@@ -31,7 +31,7 @@ input{font-family:inherit;}
 
 /* Top bar */
 .topbar{position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:10px;
-  padding:calc(env(safe-area-inset-top) + 14px) 16px 14px; background:rgba(20,24,27,.9);
+  padding:calc(env(safe-area-inset-top) + 14px) 16px 14px; background:rgba(255,255,255,.88);
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   border-bottom:1px solid var(--line);}
 .topbar .back{width:32px; height:32px; display:flex; align-items:center; justify-content:center;
@@ -44,7 +44,7 @@ input{font-family:inherit;}
 
 /* Job list */
 .job-card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
-  margin-bottom:10px; display:flex; align-items:center; gap:12px;}
+  margin-bottom:10px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 10px rgba(30,50,80,.08);}
 .job-card .info{flex:1; min-width:0;}
 .job-card .name{font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .job-card .meta{font-size:12px; color:var(--text-dim); font-family:var(--mono); margin-top:2px;}
@@ -451,3 +451,4 @@ loadJobs();
 </script>
 </body>
 </html>
+
