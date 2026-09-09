@@ -338,13 +338,14 @@ exports.handler = async (event) => {
     const drawAnalyzerRow = (label, imgs) => {
       const present = imgs.filter(Boolean);
       if (!present.length) return;
-      ensureSpace(140);
+      const boxH = 170;
+      ensureSpace(boxH + 40);
       drawText(label, margin, y, 10, { bold: true }); y -= 12;
-      const cols = 3, gap = 12;
-      const boxW = (pageW - margin * 2 - gap * (cols - 1)) / cols, boxH = 110;
+      const gap = 12;
+      const cols = present.length;
+      const boxW = Math.min((pageW - margin * 2 - gap * (cols - 1)) / cols, 220);
       const rowY = y;
-      imgs.forEach((img, i) => {
-        if (!img) return;
+      present.forEach((img, i) => {
         const x = margin + i * (boxW + gap);
         const scale = Math.min(boxW / img.width, boxH / img.height);
         const w = img.width * scale, h = img.height * scale;
