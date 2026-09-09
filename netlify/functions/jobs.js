@@ -55,8 +55,8 @@ exports.handler = async (event) => {
         vin: data.vin || "",
         createdAt: new Date().toISOString(),
         vehiclePhotos: { vin: null, plate: null, side: null },
-        before: { co: "", co2: "", o2: "", photoKeys: [null, null, null], savedAt: null },
-        after: { co: "", co2: "", o2: "", photoKeys: [null, null, null], savedAt: null },
+        before: { co: "", co2: "", o2: "", photoKeys: [null], savedAt: null },
+        after: { co: "", co2: "", o2: "", photoKeys: [null], savedAt: null },
       };
       await store.set(jobId, JSON.stringify(job));
       return { statusCode: 200, headers: cors, body: JSON.stringify(job) };
@@ -82,3 +82,4 @@ exports.handler = async (event) => {
     return { statusCode: 500, headers: cors, body: String(err) };
   }
 };
+  
