@@ -221,6 +221,7 @@ input{font-family:inherit;}
       <div class="section-title">Vehicle Details</div>
       <div class="field"><label>License Plate</label><input id="detail-licensePlate" type="text" autocapitalize="characters"></div>
       <div class="field"><label>Mileage</label><input id="detail-mileage" type="text" inputmode="numeric"></div>
+      <div class="field"><label>Year</label><input id="detail-year" type="text" inputmode="numeric" placeholder="e.g. 2020"></div>
       <div class="field"><label>Make</label><input id="detail-make" type="text"></div>
       <div class="field"><label>Model</label><input id="detail-model" type="text"></div>
       <div class="field"><label>Engine Type</label><input id="detail-engine" type="text" placeholder="e.g. 1.7L I4"></div>
@@ -392,6 +393,7 @@ async function openJob(id){
   document.getElementById("job-sub").textContent = [currentJob.licensePlate, currentJob.vin].filter(Boolean).join(" · ");
   document.getElementById("detail-licensePlate").value = currentJob.licensePlate || "";
   document.getElementById("detail-mileage").value = currentJob.mileage || "";
+  document.getElementById("detail-year").value = currentJob.year || "";
   document.getElementById("detail-make").value = currentJob.make || "";
   document.getElementById("detail-model").value = currentJob.model || "";
   document.getElementById("detail-engine").value = currentJob.engine || "";
@@ -407,6 +409,7 @@ async function saveDetails(){
   const updates = {
     licensePlate: document.getElementById("detail-licensePlate").value.trim(),
     mileage: document.getElementById("detail-mileage").value.trim(),
+    year: document.getElementById("detail-year").value.trim(),
     make: document.getElementById("detail-make").value.trim(),
     model: document.getElementById("detail-model").value.trim(),
     engine: document.getElementById("detail-engine").value.trim(),
