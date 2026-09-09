@@ -104,6 +104,14 @@ function o2Meaning(pct) {
   return "O2 decreased - richer mixture indicated.";
 }
 
+const jwt = require("jsonwebtoken");
+function checkAuth(event) {
+  const token = event.headers["x-app-token"] || event.headers["X-App-Token"] || (event.queryStringParameters || {}).token;
+  if (!token) return false;
+  try { jwt.verify(token, process.env.SESSION_SECRET); return true; }
+  catch { return false; }
+}
+
 exports.handler = async (event) => {
   const creds = { siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_AUTH_TOKEN };
   const jobStore = getStore({ name: "ucs-jobs", ...creds });
@@ -111,11 +119,12 @@ exports.handler = async (event) => {
   const { jobId } = event.queryStringParameters || {};
   const cors = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-App-Token",
     "Access-Control-Allow-Methods": "GET,OPTIONS",
   };
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors };
+  if (!checkAuth(event)) return { statusCode: 401, headers: cors, body: "Unauthorized" };
   if (!jobId) return { statusCode: 400, headers: cors, body: "Missing jobId" };
 
   try {
