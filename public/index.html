@@ -51,6 +51,9 @@ input{font-family:inherit;}
 .status-dots{display:flex; gap:5px; flex:none;}
 .dot{width:9px; height:9px; border-radius:50%; background:var(--line);}
 .dot.done{background:var(--green);}
+.job-delete{flex:none; width:32px; height:32px; border-radius:8px; background:transparent;
+  color:var(--text-dim); font-size:15px; display:flex; align-items:center; justify-content:center;}
+.job-delete:active{background:var(--panel-raised);}
 .empty-state{text-align:center; padding:60px 20px; color:var(--text-dim);}
 .empty-state p{margin:8px 0 0; font-size:14px; line-height:1.5;}
 
@@ -191,20 +194,10 @@ input{font-family:inherit;}
         <h1 id="job-title" style="font-size:16px;"></h1>
         <div class="sub" id="job-sub"></div>
       </div>
+      <button class="back" onclick="deleteJob(currentJob.id)">🗑</button>
     </div>
     <div class="screen">
-      <div class="section-title">Vehicle Details</div>
-      <div class="field"><label>License Plate</label><input id="detail-licensePlate" type="text" autocapitalize="characters"></div>
-      <div class="field"><label>Mileage</label><input id="detail-mileage" type="text" inputmode="numeric"></div>
-      <div class="field"><label>Make</label><input id="detail-make" type="text"></div>
-      <div class="field"><label>Model</label><input id="detail-model" type="text"></div>
-      <div class="field"><label>Engine Type</label><input id="detail-engine" type="text" placeholder="e.g. 1.7L I4"></div>
-      <div class="field"><label>VIN</label><input id="detail-vin" type="text" autocapitalize="characters"></div>
-      <button class="secondary-btn" onclick="saveDetails()">Save Details</button>
-
-      <div class="stage-divider">BEFORE SERVICE</div>
-
-      <div class="section-title">Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
+      <div class="section-title">Before Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
       <div class="photo-strip static" id="photo-strip-before"></div>
 
       <div class="section-title">Before Readings</div>
@@ -217,18 +210,29 @@ input{font-family:inherit;}
         <button class="secondary-btn" onclick="saveReadings('before')">Save Before Readings</button>
       </div>
 
-      <div class="section-title">Vehicle ID Photos (VIN, Plate, Side View)</div>
-      <div class="photo-strip static" id="vehicle-photo-strip"></div>
-
       <div class="stage-divider">SERVICE TIMER</div>
       <div class="timer-box">
         <div class="timer-display" id="timer-display">30:00</div>
         <button class="primary-btn" id="timer-btn" onclick="startTimer()">Start 30-Minute Timer</button>
       </div>
 
+      <div class="stage-divider">VEHICLE INFO</div>
+
+      <div class="section-title">Vehicle Details</div>
+      <div class="field"><label>License Plate</label><input id="detail-licensePlate" type="text" autocapitalize="characters"></div>
+      <div class="field"><label>Mileage</label><input id="detail-mileage" type="text" inputmode="numeric"></div>
+      <div class="field"><label>Make</label><input id="detail-make" type="text"></div>
+      <div class="field"><label>Model</label><input id="detail-model" type="text"></div>
+      <div class="field"><label>Engine Type</label><input id="detail-engine" type="text" placeholder="e.g. 1.7L I4"></div>
+      <div class="field"><label>VIN</label><input id="detail-vin" type="text" autocapitalize="characters"></div>
+      <button class="secondary-btn" onclick="saveDetails()">Save Details</button>
+
+      <div class="section-title">Vehicle ID Photos (VIN, Plate, Side View)</div>
+      <div class="photo-strip static" id="vehicle-photo-strip"></div>
+
       <div class="stage-divider">AFTER SERVICE</div>
 
-      <div class="section-title">Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
+      <div class="section-title">After Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
       <div class="photo-strip static" id="photo-strip-after"></div>
 
       <div class="section-title">After Readings</div>
@@ -353,8 +357,15 @@ function renderJobList(){
         <div class="dot ${hasAnyPhoto(j.before) ? 'done':''}" title="Before"></div>
         <div class="dot ${hasAnyPhoto(j.after) ? 'done':''}" title="After"></div>
       </div>
+      <button class="job-delete" onclick="event.stopPropagation(); deleteJob('${j.id}')">🗑</button>
     </div>
   `).join("");
+}
+async function deleteJob(id){
+  if(!confirm("Delete this job? This can't be undone.")) return;
+  await apiFetch(`${API}/jobs?id=${id}`, { method:"DELETE" });
+  toast("Job deleted");
+  showList();
 }
 function hasAnyPhoto(stage){
   return !!(stage && Array.isArray(stage.photoKeys) && stage.photoKeys.some(Boolean));
