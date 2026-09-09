@@ -1,5 +1,13 @@
 const { getStore } = require("@netlify/blobs");
 
+const jwt = require("jsonwebtoken");
+function checkAuth(event) {
+  const token = event.headers["x-app-token"] || event.headers["X-App-Token"];
+  if (!token) return false;
+  try { jwt.verify(token, process.env.SESSION_SECRET); return true; }
+  catch { return false; }
+}
+
 exports.handler = async (event) => {
   const store = getStore({
     name: "ucs-jobs",
@@ -9,11 +17,12 @@ exports.handler = async (event) => {
   const { id } = event.queryStringParameters || {};
   const cors = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-App-Token",
     "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
   };
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors };
+  if (!checkAuth(event)) return { statusCode: 401, headers: cors, body: "Unauthorized" };
 
   try {
     if (event.httpMethod === "GET" && !id) {
