@@ -116,10 +116,25 @@ input{font-family:inherit;}
 <div class="app-bg"></div>
 <div id="app">
 
+  <!-- LOGIN SCREEN -->
+  <div id="screen-login" class="screen-wrap hidden">
+    <div class="topbar">
+      <h1>UCS Launcher</h1>
+    </div>
+    <div class="screen">
+      <div class="field"><label>Username</label><input id="login-username" type="text" placeholder="Username" autocapitalize="none" autocorrect="off"></div>
+      <div class="field"><label>Password</label><input id="login-password" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')login()"></div>
+      <button class="primary-btn" onclick="login()">Log In</button>
+    </div>
+  </div>
+
   <!-- JOB LIST SCREEN -->
-  <div id="screen-list" class="screen-wrap">
+  <div id="screen-list" class="screen-wrap hidden">
     <div class="topbar">
       <h1>Jobs</h1>
+      <div class="sub" id="whoami"></div>
+      <button class="back" id="admin-btn" onclick="showAdmin()" style="display:none;">⚙️</button>
+      <button class="back" onclick="logout()">⏻</button>
     </div>
     <div class="screen">
       <div id="job-list"></div>
@@ -129,6 +144,22 @@ input{font-family:inherit;}
       </div>
     </div>
     <button class="fab" onclick="showNewJob()">+</button>
+  </div>
+
+  <!-- ADMIN: MANAGE TECHNICIANS -->
+  <div id="screen-admin" class="screen-wrap hidden">
+    <div class="topbar">
+      <button class="back" onclick="showList()">‹</button>
+      <h1>Manage Technicians</h1>
+    </div>
+    <div class="screen">
+      <div id="user-list"></div>
+      <div class="section-title">Add Technician</div>
+      <div class="field"><label>Name</label><input id="newuser-name" type="text" placeholder="Full name"></div>
+      <div class="field"><label>Username</label><input id="newuser-username" type="text" placeholder="username" autocapitalize="none" autocorrect="off"></div>
+      <div class="field"><label>Password</label><input id="newuser-password" type="password" placeholder="Password"></div>
+      <button class="primary-btn" onclick="addUser()">Add Technician</button>
+    </div>
   </div>
 
   <!-- NEW JOB SCREEN -->
@@ -187,6 +218,9 @@ input{font-family:inherit;}
       <div class="bottom-actions">
         <button class="primary-btn" onclick="generateReport()">Generate Report</button>
       </div>
+      <div class="bottom-actions">
+        <button class="secondary-btn" onclick="backupToDrive()">Backup to Google Drive</button>
+      </div>
     </div>
   </div>
 
@@ -207,6 +241,47 @@ let jobs = [];
 let currentJob = null;
 let currentStage = "before";
 let pendingCapture = null; // { kind: "analyzer"|"vehicle", slot }
+let APP_TOKEN = localStorage.getItem("ucs_token") || "";
+let APP_NAME = localStorage.getItem("ucs_name") || "";
+let APP_ISADMIN = localStorage.getItem("ucs_isadmin") === "1";
+
+function apiFetch(url, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), "X-App-Token": APP_TOKEN };
+  return fetch(url, opts);
+}
+
+async function login(){
+  const username = document.getElementById("login-username").value.trim();
+  const password = document.getElementById("login-password").value;
+  if(!username || !password){ toast("Enter username and password"); return; }
+  const res = await fetch(`${API}/auth`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({username, password})
+  });
+  const data = await res.json().catch(()=>({}));
+  if(res.ok && data.ok){
+    APP_TOKEN = data.token; APP_NAME = data.name; APP_ISADMIN = !!data.isAdmin;
+    localStorage.setItem("ucs_token", APP_TOKEN);
+    localStorage.setItem("ucs_name", APP_NAME);
+    localStorage.setItem("ucs_isadmin", APP_ISADMIN ? "1" : "0");
+    showList();
+  } else {
+    toast("Incorrect username or password");
+  }
+}
+
+function logout(){
+  localStorage.removeItem("ucs_token");
+  localStorage.removeItem("ucs_name");
+  localStorage.removeItem("ucs_isadmin");
+  APP_TOKEN = ""; APP_NAME = ""; APP_ISADMIN = false;
+  show("screen-login");
+}
+
+async function init(){
+  if(!APP_TOKEN){ show("screen-login"); return; }
+  showList();
+}
 
 function toast(msg){
   const t = document.getElementById("toast");
@@ -218,7 +293,12 @@ function show(id){
   document.querySelectorAll(".screen-wrap").forEach(s=>s.classList.add("hidden"));
   document.getElementById(id).classList.remove("hidden");
 }
-function showList(){ show("screen-list"); loadJobs(); }
+function showList(){
+  show("screen-list");
+  document.getElementById("whoami").textContent = APP_NAME ? `— ${APP_NAME}` : "";
+  document.getElementById("admin-btn").style.display = APP_ISADMIN ? "flex" : "none";
+  loadJobs();
+}
 function showNewJob(){
   document.getElementById("new-customer").value = "";
   show("screen-new");
@@ -226,7 +306,8 @@ function showNewJob(){
 
 async function loadJobs(){
   try{
-    const res = await fetch(`${API}/jobs`);
+    const res = await apiFetch(`${API}/jobs`);
+    if(res.status === 401){ logout(); return; }
     jobs = await res.json();
   }catch(e){ jobs = []; }
   renderJobList();
@@ -259,7 +340,7 @@ function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":
 async function createJob(){
   const customer = document.getElementById("new-customer").value.trim();
   if(!customer){ toast("Enter a customer name"); return; }
-  const res = await fetch(`${API}/jobs`, {
+  const res = await apiFetch(`${API}/jobs`, {
     method:"POST", headers:{"Content-Type":"application/json"},
     body: JSON.stringify({customer})
   });
@@ -269,7 +350,7 @@ async function createJob(){
 }
 
 async function openJob(id){
-  const res = await fetch(`${API}/jobs?id=${id}`);
+  const res = await apiFetch(`${API}/jobs?id=${id}`);
   currentJob = await res.json();
   document.getElementById("job-title").textContent = currentJob.customer || currentJob.licensePlate || "Job";
   document.getElementById("job-sub").textContent = [currentJob.licensePlate, currentJob.vin].filter(Boolean).join(" · ");
@@ -296,7 +377,7 @@ async function saveDetails(){
   Object.assign(currentJob, updates);
   document.getElementById("job-title").textContent = currentJob.customer || currentJob.licensePlate || "Job";
   document.getElementById("job-sub").textContent = [currentJob.licensePlate, currentJob.vin].filter(Boolean).join(" · ");
-  await fetch(`${API}/jobs?id=${currentJob.id}`, {
+  await apiFetch(`${API}/jobs?id=${currentJob.id}`, {
     method:"PUT", headers:{"Content-Type":"application/json"},
     body: JSON.stringify(updates)
   });
@@ -375,7 +456,7 @@ document.getElementById("file-input").addEventListener("change", async (e)=>{
   const base64 = await resizeImage(file);
 
   if(kind === "analyzer"){
-    const res = await fetch(`${API}/photo?jobId=${currentJob.id}&stage=${currentStage}&slot=${slot}`, {
+    const res = await apiFetch(`${API}/photo?jobId=${currentJob.id}&stage=${currentStage}&slot=${slot}`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({image: base64})
     });
@@ -384,7 +465,7 @@ document.getElementById("file-input").addEventListener("change", async (e)=>{
     currentJob[currentStage].photoKeys[slot] = result.photoKey;
     renderStage();
   } else {
-    const res = await fetch(`${API}/photo?jobId=${currentJob.id}&stage=vehicle&slot=${slot}`, {
+    const res = await apiFetch(`${API}/photo?jobId=${currentJob.id}&stage=vehicle&slot=${slot}`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({image: base64})
     });
@@ -435,7 +516,7 @@ async function saveReadings(){
     currentJob[currentStage][inp.dataset.field] = inp.value.trim();
   });
   updates[currentStage] = currentJob[currentStage];
-  await fetch(`${API}/jobs?id=${currentJob.id}`, {
+  await apiFetch(`${API}/jobs?id=${currentJob.id}`, {
     method:"PUT", headers:{"Content-Type":"application/json"},
     body: JSON.stringify(updates)
   });
@@ -444,11 +525,78 @@ async function saveReadings(){
 
 function generateReport(){
   toast("Opening report...");
-  window.open(`${API}/report?jobId=${currentJob.id}`, "_blank");
+  window.open(`${API}/report?jobId=${currentJob.id}&token=${encodeURIComponent(APP_TOKEN)}`, "_blank");
+  backupToDrive(true);
 }
 
-loadJobs();
+async function backupToDrive(silent){
+  if(!silent) toast("Backing up to Drive...");
+  try{
+    const res = await apiFetch(`${API}/backup?jobId=${currentJob.id}`);
+    const data = await res.json();
+    if(res.ok && data.ok){
+      if(!silent) toast("Backed up to Drive");
+    } else if(!silent){
+      toast("Backup failed - check Drive setup");
+    }
+  }catch(e){
+    if(!silent) toast("Backup failed");
+  }
+}
+
+function showAdmin(){
+  show("screen-admin");
+  loadUsers();
+}
+
+async function loadUsers(){
+  const list = document.getElementById("user-list");
+  list.innerHTML = "<div class='empty-state'>Loading...</div>";
+  try{
+    const res = await apiFetch(`${API}/users`);
+    const users = await res.json();
+    if(!users.length){ list.innerHTML = "<div class='empty-state'><p>No technicians added yet.</p></div>"; return; }
+    list.innerHTML = users.map(u => `
+      <div class="job-card">
+        <div class="info">
+          <div class="name">${escapeHtml(u.name)}</div>
+          <div class="meta">${escapeHtml(u.username)}</div>
+        </div>
+        <button class="back" onclick="deleteUser('${u.username}')">🗑</button>
+      </div>
+    `).join("");
+  }catch(e){
+    list.innerHTML = "<div class='empty-state'><p>Couldn't load technicians.</p></div>";
+  }
+}
+
+async function addUser(){
+  const name = document.getElementById("newuser-name").value.trim();
+  const username = document.getElementById("newuser-username").value.trim();
+  const password = document.getElementById("newuser-password").value;
+  if(!username || !password){ toast("Username and password required"); return; }
+  const res = await apiFetch(`${API}/users`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({name, username, password})
+  });
+  if(res.ok){
+    document.getElementById("newuser-name").value = "";
+    document.getElementById("newuser-username").value = "";
+    document.getElementById("newuser-password").value = "";
+    toast("Technician added");
+    loadUsers();
+  } else {
+    toast("Couldn't add technician");
+  }
+}
+
+async function deleteUser(username){
+  await apiFetch(`${API}/users?username=${encodeURIComponent(username)}`, { method:"DELETE" });
+  toast("Technician removed");
+  loadUsers();
+}
+
+init();
 </script>
 </body>
 </html>
-
