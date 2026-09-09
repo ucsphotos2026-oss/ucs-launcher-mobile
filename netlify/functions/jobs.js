@@ -50,6 +50,7 @@ exports.handler = async (event) => {
         mileage: data.mileage || "",
         make: data.make || "",
         model: data.model || "",
+        year: data.year || "",
         engine: data.engine || "",
         vin: data.vin || "",
         createdAt: new Date().toISOString(),
