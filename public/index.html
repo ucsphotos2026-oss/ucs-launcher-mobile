@@ -430,7 +430,7 @@ function renderPhase(phase){
   document.querySelectorAll(`[data-field][data-phase="${phase}"]`).forEach(inp=>{
     inp.value = data[inp.dataset.field] || "";
   });
-  if(!Array.isArray(data.photoKeys)) data.photoKeys = [null, null, null];
+  if(!Array.isArray(data.photoKeys)) data.photoKeys = [null];
 
   const strip = document.getElementById(`photo-strip-${phase}`);
   strip.innerHTML = "";
@@ -500,7 +500,7 @@ document.getElementById("file-input").addEventListener("change", async (e)=>{
     currentJob.vehiclePhotos[slot] = result.photoKey;
     renderVehiclePhotos();
   } else {
-    if(!Array.isArray(currentJob[stage].photoKeys)) currentJob[stage].photoKeys = [null, null, null];
+    if(!Array.isArray(currentJob[stage].photoKeys)) currentJob[stage].photoKeys = [null];
     currentJob[stage].photoKeys[slot] = result.photoKey;
     renderPhase(stage);
   }
