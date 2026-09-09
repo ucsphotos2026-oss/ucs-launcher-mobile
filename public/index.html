@@ -431,10 +431,11 @@ function renderPhase(phase){
     inp.value = data[inp.dataset.field] || "";
   });
   if(!Array.isArray(data.photoKeys)) data.photoKeys = [null];
+  const keys = [data.photoKeys[0] || null];
 
   const strip = document.getElementById(`photo-strip-${phase}`);
   strip.innerHTML = "";
-  data.photoKeys.forEach((key, idx)=>{
+  keys.forEach((key, idx)=>{
     strip.appendChild(buildSlot(key, {stage:phase, slot:idx}, null));
   });
 }
