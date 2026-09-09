@@ -76,6 +76,15 @@ input{font-family:inherit;}
 .stage-toggle button{flex:1; padding:10px; border-radius:9px; font-size:14px; font-weight:600; color:var(--text-dim); background:transparent;}
 .stage-toggle button.active{background:var(--panel-raised); color:var(--text);}
 
+.stage-divider{margin:32px 0 6px; padding-bottom:8px; border-bottom:2px solid var(--amber);
+  font-size:13px; font-weight:700; letter-spacing:.6px; color:var(--text);}
+
+.timer-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px;
+  text-align:center; margin-bottom:6px; box-shadow:0 2px 10px rgba(30,50,80,.08);}
+.timer-display{font-family:var(--mono); font-size:40px; font-weight:700; color:var(--text); margin-bottom:14px;}
+.timer-display.running{color:var(--amber);}
+.timer-display.done{color:var(--green);}
+
 .section-title{font-size:12px; text-transform:none; color:var(--text-dim); letter-spacing:.3px; margin:22px 0 10px;}
 .section-title:first-child{margin-top:0;}
 
@@ -184,11 +193,6 @@ input{font-family:inherit;}
       </div>
     </div>
     <div class="screen">
-      <div class="stage-toggle">
-        <button id="tab-before" onclick="setStage('before')">Before</button>
-        <button id="tab-after" onclick="setStage('after')">After</button>
-      </div>
-
       <div class="section-title">Vehicle Details</div>
       <div class="field"><label>License Plate</label><input id="detail-licensePlate" type="text" autocapitalize="characters"></div>
       <div class="field"><label>Mileage</label><input id="detail-mileage" type="text" inputmode="numeric"></div>
@@ -198,22 +202,44 @@ input{font-family:inherit;}
       <div class="field"><label>VIN</label><input id="detail-vin" type="text" autocapitalize="characters"></div>
       <button class="secondary-btn" onclick="saveDetails()">Save Details</button>
 
+      <div class="stage-divider">BEFORE SERVICE</div>
+
       <div class="section-title">Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
-      <div class="photo-strip" id="photo-strip"></div>
+      <div class="photo-strip static" id="photo-strip-before"></div>
 
-      <div class="section-title">Readings (from photo)</div>
+      <div class="section-title">Before Readings</div>
       <div class="readings-grid">
-        <div class="field"><label>CO PPM</label><input data-field="co" type="text" inputmode="decimal"></div>
-        <div class="field"><label>CO2 %</label><input data-field="co2" type="text" inputmode="decimal"></div>
-        <div class="field"><label>O2 %</label><input data-field="o2" type="text" inputmode="decimal"></div>
+        <div class="field"><label>CO PPM</label><input data-field="co" data-phase="before" type="text" inputmode="decimal"></div>
+        <div class="field"><label>CO2 %</label><input data-field="co2" data-phase="before" type="text" inputmode="decimal"></div>
+        <div class="field"><label>O2 %</label><input data-field="o2" data-phase="before" type="text" inputmode="decimal"></div>
       </div>
-
       <div class="bottom-actions">
-        <button class="secondary-btn" onclick="saveReadings()">Save Readings</button>
+        <button class="secondary-btn" onclick="saveReadings('before')">Save Before Readings</button>
       </div>
 
       <div class="section-title">Vehicle ID Photos (VIN, Plate, Side View)</div>
       <div class="photo-strip static" id="vehicle-photo-strip"></div>
+
+      <div class="stage-divider">SERVICE TIMER</div>
+      <div class="timer-box">
+        <div class="timer-display" id="timer-display">30:00</div>
+        <button class="primary-btn" id="timer-btn" onclick="startTimer()">Start 30-Minute Timer</button>
+      </div>
+
+      <div class="stage-divider">AFTER SERVICE</div>
+
+      <div class="section-title">Analyzer Photos (tap empty box to capture, tap filled box to view)</div>
+      <div class="photo-strip static" id="photo-strip-after"></div>
+
+      <div class="section-title">After Readings</div>
+      <div class="readings-grid">
+        <div class="field"><label>CO PPM</label><input data-field="co" data-phase="after" type="text" inputmode="decimal"></div>
+        <div class="field"><label>CO2 %</label><input data-field="co2" data-phase="after" type="text" inputmode="decimal"></div>
+        <div class="field"><label>O2 %</label><input data-field="o2" data-phase="after" type="text" inputmode="decimal"></div>
+      </div>
+      <div class="bottom-actions">
+        <button class="secondary-btn" onclick="saveReadings('after')">Save After Readings</button>
+      </div>
 
       <div class="bottom-actions">
         <button class="primary-btn" onclick="generateReport()">Generate Report</button>
@@ -239,8 +265,7 @@ input{font-family:inherit;}
 const API = "/api";
 let jobs = [];
 let currentJob = null;
-let currentStage = "before";
-let pendingCapture = null; // { kind: "analyzer"|"vehicle", slot }
+let pendingCapture = null; // { stage: "before"|"after"|"vehicle", slot }
 let APP_TOKEN = localStorage.getItem("ucs_token") || "";
 let APP_NAME = localStorage.getItem("ucs_name") || "";
 let APP_ISADMIN = localStorage.getItem("ucs_isadmin") === "1";
@@ -360,8 +385,10 @@ async function openJob(id){
   document.getElementById("detail-model").value = currentJob.model || "";
   document.getElementById("detail-engine").value = currentJob.engine || "";
   document.getElementById("detail-vin").value = currentJob.vin || "";
-  setStage("before");
+  renderPhase("before");
+  renderPhase("after");
   renderVehiclePhotos();
+  resetTimer();
   show("screen-job");
 }
 
@@ -384,24 +411,17 @@ async function saveDetails(){
   toast("Details saved");
 }
 
-function setStage(stage){
-  currentStage = stage;
-  document.getElementById("tab-before").classList.toggle("active", stage==="before");
-  document.getElementById("tab-after").classList.toggle("active", stage==="after");
-  renderStage();
-}
-
-function renderStage(){
-  const data = currentJob[currentStage] || {};
-  document.querySelectorAll("[data-field]").forEach(inp=>{
+function renderPhase(phase){
+  const data = currentJob[phase] || {};
+  document.querySelectorAll(`[data-field][data-phase="${phase}"]`).forEach(inp=>{
     inp.value = data[inp.dataset.field] || "";
   });
   if(!Array.isArray(data.photoKeys)) data.photoKeys = [null, null, null];
 
-  const strip = document.getElementById("photo-strip");
+  const strip = document.getElementById(`photo-strip-${phase}`);
   strip.innerHTML = "";
   data.photoKeys.forEach((key, idx)=>{
-    strip.appendChild(buildSlot(key, {kind:"analyzer", slot:idx}, null));
+    strip.appendChild(buildSlot(key, {stage:phase, slot:idx}, null));
   });
 }
 
@@ -410,7 +430,7 @@ function renderVehiclePhotos(){
   const strip = document.getElementById("vehicle-photo-strip");
   strip.innerHTML = "";
   [["vin","VIN"],["plate","Plate"],["side","Side"]].forEach(([slotKey,label])=>{
-    strip.appendChild(buildSlot(currentJob.vehiclePhotos[slotKey], {kind:"vehicle", slot:slotKey}, label));
+    strip.appendChild(buildSlot(currentJob.vehiclePhotos[slotKey], {stage:"vehicle", slot:slotKey}, label));
   });
 }
 
@@ -451,28 +471,24 @@ function triggerCapture(target){
 document.getElementById("file-input").addEventListener("change", async (e)=>{
   const file = e.target.files[0];
   if(!file || !pendingCapture) return;
-  const { kind, slot } = pendingCapture;
+  const { stage, slot } = pendingCapture;
   toast("Uploading...");
   const base64 = await resizeImage(file);
 
-  if(kind === "analyzer"){
-    const res = await apiFetch(`${API}/photo?jobId=${currentJob.id}&stage=${currentStage}&slot=${slot}`, {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({image: base64})
-    });
-    const result = await res.json();
-    if(!Array.isArray(currentJob[currentStage].photoKeys)) currentJob[currentStage].photoKeys = [null, null, null];
-    currentJob[currentStage].photoKeys[slot] = result.photoKey;
-    renderStage();
-  } else {
-    const res = await apiFetch(`${API}/photo?jobId=${currentJob.id}&stage=vehicle&slot=${slot}`, {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({image: base64})
-    });
-    const result = await res.json();
+  const res = await apiFetch(`${API}/photo?jobId=${currentJob.id}&stage=${stage}&slot=${slot}`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({image: base64})
+  });
+  const result = await res.json();
+
+  if(stage === "vehicle"){
     if(!currentJob.vehiclePhotos) currentJob.vehiclePhotos = {vin:null, plate:null, side:null};
     currentJob.vehiclePhotos[slot] = result.photoKey;
     renderVehiclePhotos();
+  } else {
+    if(!Array.isArray(currentJob[stage].photoKeys)) currentJob[stage].photoKeys = [null, null, null];
+    currentJob[stage].photoKeys[slot] = result.photoKey;
+    renderPhase(stage);
   }
 
   toast("Photo saved");
@@ -510,17 +526,57 @@ function closeViewer(){
   document.getElementById("viewer").classList.add("hidden");
 }
 
-async function saveReadings(){
+async function saveReadings(phase){
   const updates = {};
-  document.querySelectorAll("[data-field]").forEach(inp=>{
-    currentJob[currentStage][inp.dataset.field] = inp.value.trim();
+  document.querySelectorAll(`[data-field][data-phase="${phase}"]`).forEach(inp=>{
+    currentJob[phase][inp.dataset.field] = inp.value.trim();
   });
-  updates[currentStage] = currentJob[currentStage];
+  updates[phase] = currentJob[phase];
   await apiFetch(`${API}/jobs?id=${currentJob.id}`, {
     method:"PUT", headers:{"Content-Type":"application/json"},
     body: JSON.stringify(updates)
   });
-  toast("Readings saved");
+  toast(`${phase === "before" ? "Before" : "After"} readings saved`);
+}
+
+// --- 30-minute service timer ---
+let timerInterval = null;
+let timerEndAt = null;
+
+function resetTimer(){
+  clearInterval(timerInterval);
+  timerInterval = null; timerEndAt = null;
+  const display = document.getElementById("timer-display");
+  display.textContent = "30:00";
+  display.className = "timer-display";
+  const btn = document.getElementById("timer-btn");
+  btn.textContent = "Start 30-Minute Timer";
+  btn.disabled = false;
+}
+
+function startTimer(){
+  timerEndAt = Date.now() + 30 * 60 * 1000;
+  const display = document.getElementById("timer-display");
+  const btn = document.getElementById("timer-btn");
+  display.className = "timer-display running";
+  btn.textContent = "Timer Running...";
+  btn.disabled = true;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    const remaining = Math.max(0, timerEndAt - Date.now());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    display.textContent = `${mins}:${secs.toString().padStart(2,"0")}`;
+    if(remaining <= 0){
+      clearInterval(timerInterval);
+      display.textContent = "Done!";
+      display.className = "timer-display done";
+      btn.textContent = "Restart Timer";
+      btn.disabled = false;
+      toast("30 minutes up - ready for After readings");
+      if(navigator.vibrate) navigator.vibrate([300,150,300]);
+    }
+  }, 1000);
 }
 
 function generateReport(){
