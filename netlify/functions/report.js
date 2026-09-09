@@ -199,7 +199,7 @@ exports.handler = async (event) => {
     const infoLeft = [
       ["VIN", job.vin || "-"],
       ["License Plate", job.licensePlate || "-"],
-      ["Make / Model", [job.make, job.model].filter(Boolean).join(" ") || "-"],
+      ["Make / Model", [job.year, job.make, job.model].filter(Boolean).join(" ") || "-"],
       ["Engine", job.engine || "-"],
     ];
     const infoRight = [
