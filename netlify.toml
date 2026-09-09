@@ -16,3 +16,18 @@
   from = "/api/report*"
   to = "/.netlify/functions/report"
   status = 200
+
+[[redirects]]
+  from = "/api/auth*"
+  to = "/.netlify/functions/auth"
+  status = 200
+
+[[redirects]]
+  from = "/api/backup*"
+  to = "/.netlify/functions/backup"
+  status = 200
+
+[[redirects]]
+  from = "/api/users*"
+  to = "/.netlify/functions/users"
+  status = 200
