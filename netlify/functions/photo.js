@@ -1,5 +1,13 @@
 const { getStore } = require("@netlify/blobs");
 
+const jwt = require("jsonwebtoken");
+function checkAuth(event) {
+  const token = event.headers["x-app-token"] || event.headers["X-App-Token"];
+  if (!token) return false;
+  try { jwt.verify(token, process.env.SESSION_SECRET); return true; }
+  catch { return false; }
+}
+
 exports.handler = async (event) => {
   const creds = { siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_AUTH_TOKEN };
   const photoStore = getStore({ name: "ucs-photos", ...creds });
@@ -7,11 +15,16 @@ exports.handler = async (event) => {
   const { jobId, stage, slot, key } = event.queryStringParameters || {};
   const cors = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-App-Token",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
   };
 
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: cors };
+  // Viewing an individual photo by its unique key stays open (img tags can't send custom headers);
+  // everything else (uploads, listing) requires the password.
+  if (!(event.httpMethod === "GET" && key) && !checkAuth(event)) {
+    return { statusCode: 401, headers: cors, body: "Unauthorized" };
+  }
 
   try {
     if (event.httpMethod === "GET" && key) {
