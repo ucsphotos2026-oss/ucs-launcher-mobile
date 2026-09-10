@@ -251,6 +251,9 @@ input{font-family:inherit;}
         <button class="primary-btn" onclick="generateReport()">Generate Report</button>
       </div>
       <div class="bottom-actions">
+        <button class="secondary-btn" onclick="emailReport()">Send Email</button>
+      </div>
+      <div class="bottom-actions">
         <button class="secondary-btn" onclick="backupToDrive()">Backup to Google Drive</button>
       </div>
     </div>
@@ -601,6 +604,18 @@ function generateReport(){
   toast("Opening report...");
   window.open(`${API}/report?jobId=${currentJob.id}&token=${encodeURIComponent(APP_TOKEN)}`, "_blank");
   backupToDrive(true);
+}
+
+async function emailReport(){
+  if(!currentJob.email){ toast("No customer email saved for this job"); return; }
+  toast("Sending email...");
+  try{
+    const res = await apiFetch(`${API}/report?jobId=${currentJob.id}&email=1`);
+    if(res.ok){ toast(`Emailed to ${currentJob.email}`); }
+    else { toast("Email failed - check setup"); }
+  }catch(e){
+    toast("Email failed - check connection");
+  }
 }
 
 async function backupToDrive(silent){
