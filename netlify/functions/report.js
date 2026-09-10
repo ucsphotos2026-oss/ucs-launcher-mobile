@@ -116,7 +116,7 @@ exports.handler = async (event) => {
   const creds = { siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_AUTH_TOKEN };
   const jobStore = getStore({ name: "ucs-jobs", ...creds });
   const photoStore = getStore({ name: "ucs-photos", ...creds });
-  const { jobId } = event.queryStringParameters || {};
+  const { jobId, email } = event.queryStringParameters || {};
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type, X-App-Token",
@@ -278,7 +278,7 @@ exports.handler = async (event) => {
         const cx = margin + slot * i + slot / 2;
         drawGauge(cx, gaugeY, radius, job[phase]?.[gas], GAS_META[gas]);
       });
-      y = gaugeY - radius - 40;
+      y = gaugeY - radius - 28;
     };
 
     drawGaugeRow("--- BEFORE SERVICE ---", "before");
@@ -456,7 +456,7 @@ exports.handler = async (event) => {
       };
     }
 
-    if (job.email && process.env.GMAIL_APP_PASSWORD) {
+    if (email === "1" && job.email && process.env.GMAIL_APP_PASSWORD) {
       try {
         const nodemailer = require("nodemailer");
         const transporter = nodemailer.createTransport({
