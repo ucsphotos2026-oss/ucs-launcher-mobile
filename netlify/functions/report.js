@@ -278,7 +278,7 @@ exports.handler = async (event) => {
         const cx = margin + slot * i + slot / 2;
         drawGauge(cx, gaugeY, radius, job[phase]?.[gas], GAS_META[gas]);
       });
-      y -= 42;
+      y = gaugeY - radius - 40;
     };
 
     drawGaugeRow("--- BEFORE SERVICE ---", "before");
@@ -300,8 +300,8 @@ exports.handler = async (event) => {
     drawText("Vehicle Identification Photos", margin, y, 13, { bold: true, color: navy }); y -= 16;
 
     const vp = job.vehiclePhotos || {};
-    const [vinImg, plateImg, sideImg] = await Promise.all([
-      embedPhoto(vp.vin), embedPhoto(vp.plate), embedPhoto(vp.side),
+    const [vinImg, plateImg, sideImg, mileageImg] = await Promise.all([
+      embedPhoto(vp.vin), embedPhoto(vp.plate), embedPhoto(vp.side), embedPhoto(vp.mileage),
     ]);
 
     const drawPhotoRow = (label, entries) => {
@@ -309,7 +309,7 @@ exports.handler = async (event) => {
       if (!present.length) return;
       ensureSpace(140);
       drawText(label, margin, y, 10, { bold: true }); y -= 12;
-      const cols = 3, gap = 12;
+      const cols = entries.length, gap = 12;
       const boxW = (pageW - margin * 2 - gap * (cols - 1)) / cols, boxH = 110;
       const rowY = y;
       entries.forEach(([img, capLabel], i) => {
@@ -325,7 +325,7 @@ exports.handler = async (event) => {
     };
 
     drawPhotoRow("Identification", [
-      [vinImg, "VIN Door Jamb"], [plateImg, "License Plate"], [sideImg, "Vehicle Side"],
+      [vinImg, "VIN Door Jamb"], [plateImg, "License Plate"], [sideImg, "Vehicle Side"], [mileageImg, "Mileage"],
     ]);
 
     const getKeys = (phase) => {
@@ -454,6 +454,29 @@ exports.handler = async (event) => {
         headers: cors,
         body: "Report too large to generate - one or more stored photos are too high resolution. Please retake photos in the app (they're now auto-compressed) and try again.",
       };
+    }
+
+    if (job.email && process.env.GMAIL_APP_PASSWORD) {
+      try {
+        const nodemailer = require("nodemailer");
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.GMAIL_USER || "usacs.report@gmail.com",
+            pass: process.env.GMAIL_APP_PASSWORD,
+          },
+        });
+        await transporter.sendMail({
+          from: `"USA Carbon Solutions" <${process.env.GMAIL_USER || "usacs.report@gmail.com"}>`,
+          replyTo: "info@usacarbonsolutions.com",
+          to: job.email,
+          subject: `Your Emissions Report - ${job.customer || "USA Carbon Solutions"}`,
+          html: `<p>Hi ${job.customer || "there"},</p><p>Attached is your emissions & efficiency report from USA Carbon Solutions.</p><p>Thank you for lowering your carbon footprint!</p>`,
+          attachments: [{ filename: `report_${jobId}.pdf`, content: base64Body, encoding: "base64" }],
+        });
+      } catch (emailErr) {
+        console.error("Email send failed:", emailErr);
+      }
     }
 
     return {
